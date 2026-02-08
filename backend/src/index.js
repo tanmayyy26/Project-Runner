@@ -214,8 +214,7 @@ function isValidGitHubUrl(url) {
  * Generate a unique execution ID
  */
 function generateExecutionId() {
-  const { v4: uuidv4 } = require('uuid');
-  return uuidv4().substring(0, 8);
+  return `exec-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
 }
 
 /**
