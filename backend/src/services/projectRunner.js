@@ -187,14 +187,29 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
     message: `🚀 Running: ${cmd} ${args.join(' ')}`
   });
 
-  const process = spawn(cmd, args, {
+  // Assign dynamic port to avoid conflicts
+  // Backend uses 5000, so use 5001+ for executed projects
+  const executionPort = 5001 + Math.floor(Math.random() * 1000);
+  
+  const env = {
+    ...process.env,
+    PORT: executionPort.toString(),
+    // Common port variables used by frameworks
+    SERVER_PORT: executionPort.toString(),
+    APP_PORT: executionPort.toString(),
+    // Prevent Next.js from using port 5000
+    NEXT_PUBLIC_API_URL: undefined
+  };
+
+  const childProcess = spawn(cmd, args, {
     cwd: projectDir,
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: false // Don't use shell - execute directly
+    shell: false, // Don't use shell - execute directly
+    env: env // Pass environment with dynamic port
   });
 
   const timeout = setTimeout(() => {
-    process.kill();
+    childProcess.kill();
     logCallback({
       status: 'warning',
       message: '⏱️ Command timeout (10 minutes)'
@@ -203,7 +218,7 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
   }, 600000);
 
   // Handle stdout
-  process.stdout.on('data', (data) => {
+  childProcess.stdout.on('data', (data) => {
     const lines = data.toString().split('\n');
     lines.forEach(line => {
       if (line.trim()) {
@@ -216,7 +231,7 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
   });
 
   // Handle stderr
-  process.stderr.on('data', (data) => {
+  childProcess.stderr.on('data', (data) => {
     const lines = data.toString().split('\n');
     lines.forEach(line => {
       if (line.trim()) {
@@ -229,7 +244,7 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
   });
 
   // Handle process exit
-  process.on('close', (code) => {
+  childProcess.on('close', (code) => {
     clearTimeout(timeout);
 
     if (code === 0) {
