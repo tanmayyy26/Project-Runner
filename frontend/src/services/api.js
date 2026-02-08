@@ -4,7 +4,8 @@
  * Handles communication with the backend API
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Use relative path for API calls - nginx will route /api to backend
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 /**
  * Run a GitHub project
