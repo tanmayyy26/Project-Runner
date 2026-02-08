@@ -7,46 +7,35 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Build and run backend with nginx
+# Stage 2: Final image with backend only (Express will serve frontend)
 FROM node:18-alpine
 WORKDIR /app
 
-# Install nginx
-RUN apk add --no-cache nginx curl git bash
+# Install git and bash for project cloning
+RUN apk add --no-cache git bash
 
-# Copy backend dependencies and install
-WORKDIR /app/backend
+# Copy backend
 COPY backend/package*.json ./
 RUN npm install --production
-
-# Copy backend code
 COPY backend/ ./
 
-# Create temp directory
-RUN mkdir -p /app/temp-projects /var/log/nginx /var/run/nginx
+# Copy frontend build to backend's public folder
+RUN mkdir -p ./public
+COPY --from=frontend-builder /app/frontend/build ./public
 
-# Copy nginx config
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+# Create temp directory for cloned projects
+RUN mkdir -p ./temp-projects
 
-# Copy frontend build to nginx
-RUN mkdir -p /usr/share/nginx/html
-COPY --from=frontend-builder /app/frontend/build /usr/share/nginx/html
-
-# Verify frontend files exist
-RUN ls -la /usr/share/nginx/html && echo "Frontend build completed"
-
-# Set working directory back to app root
-WORKDIR /app/backend
-
-# Expose port
+# Expose port (Render uses this)
 EXPOSE 10000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
-# Start both services
-CMD ["sh", "-c", "echo 'Starting services...' && nginx -g 'daemon off;' & npm start"]
+# Start backend (which serves frontend as static files)
+CMD ["npm", "start"]
+
 
 
 

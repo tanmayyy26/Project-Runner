@@ -4,8 +4,8 @@
  * Handles communication with the backend API
  */
 
-// Use relative path for API calls - nginx will route /api to backend
-const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
+// Use relative paths - works with both local and production servers
+const API_BASE_URL = '';
 
 /**
  * Run a GitHub project
