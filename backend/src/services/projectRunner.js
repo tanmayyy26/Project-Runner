@@ -113,7 +113,7 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
     let command;
     let args = [];
 
-    switch (projectType.type.toLowerCase()) {
+    switch (projectType.type) {
       case 'nodejs':
         command = 'npm';
         args = ['install', '&&', 'npm', 'start'];
@@ -130,7 +130,7 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
         break;
 
       default:
-        return reject(new Error(`Unsupported project type: ${projectType.type}`));
+        return reject(new Error(`Unsupported project type: ${projectType.type}. Supported: nodejs, python, java`));
     }
 
     logCallback({

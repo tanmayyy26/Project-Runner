@@ -9,12 +9,12 @@ const fs = require('fs').promises;
 const path = require('path');
 
 /**
- * Supported project types
+ * Supported project types (lowercase for consistency)
  */
 const PROJECT_TYPES = {
-  NODEJS: 'Node.js',
-  PYTHON: 'Python',
-  JAVA: 'Java'
+  NODEJS: 'nodejs',
+  PYTHON: 'python',
+  JAVA: 'java'
 };
 
 /**
