@@ -110,7 +110,7 @@ async function runProject(githubUrl, branch = 'main', logCallback) {
  */
 async function runProjectNatively(projectDir, projectType, logCallback) {
   return new Promise((resolve, reject) => {
-    let commands = []; // Array of commands to run sequentially
+    let commands = [];
 
     // Get package.json to check for npm scripts
     const packageJsonPath = `${projectDir}/package.json`;
@@ -125,13 +125,13 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
     switch (projectType.type) {
       case 'nodejs':
         // Always install first
-        commands.push('npm install');
+        commands.push({ type: 'npm', args: ['install'] });
         
         // Then check what to run
         if (packageJson && packageJson.scripts && packageJson.scripts.start) {
-          commands.push('npm start');
+          commands.push({ type: 'npm', args: ['start'] });
         } else if (packageJson && packageJson.scripts && packageJson.scripts.build) {
-          commands.push('npm run build');
+          commands.push({ type: 'npm', args: ['run', 'build'] });
         } else {
           logCallback({
             status: 'warning',
@@ -145,20 +145,20 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
         const mainPyPath = `${projectDir}/main.py`;
         try {
           require('fs').accessSync(mainPyPath);
-          commands.push('pip install -r requirements.txt');
-          commands.push('python main.py');
+          commands.push({ type: 'pip', args: ['install', '-r', 'requirements.txt'] });
+          commands.push({ type: 'python', args: ['main.py'] });
         } catch {
           logCallback({
             status: 'warning',
             message: '⚠️ No main.py found. Installing dependencies only.'
           });
-          commands.push('pip install -r requirements.txt');
+          commands.push({ type: 'pip', args: ['install', '-r', 'requirements.txt'] });
         }
         break;
 
       case 'java':
-        commands.push('mvn clean install');
-        commands.push('mvn spring-boot:run || mvn exec:java');
+        commands.push({ type: 'mvn', args: ['clean', 'install'] });
+        commands.push({ type: 'mvn', args: ['spring-boot:run'] });
         break;
 
       default:
@@ -166,34 +166,39 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
     }
 
     // Execute commands sequentially
-    executeSequentially(commands, projectDir, logCallback, resolve, reject);
+    executeCommandSequence(commands, projectDir, logCallback, resolve, reject);
   });
 }
 
 /**
- * Execute commands one by one
+ * Execute commands one by one using proper process spawning
  */
-function executeSequentially(commands, projectDir, logCallback, resolve, reject) {
+function executeCommandSequence(commands, projectDir, logCallback, resolve, reject) {
   if (commands.length === 0) {
     resolve();
     return;
   }
 
-  const command = commands.shift();
+  const cmdObj = commands.shift();
+  const { type: cmd, args } = cmdObj;
+
   logCallback({
     status: 'progress',
-    message: `🚀 Running: ${command}`
+    message: `🚀 Running: ${cmd} ${args.join(' ')}`
   });
 
-  const process = spawn('sh', ['-c', command], {
+  const process = spawn(cmd, args, {
     cwd: projectDir,
     stdio: ['ignore', 'pipe', 'pipe'],
-    shell: true,
-    timeout: 600000
+    shell: false // Don't use shell - execute directly
   });
 
   const timeout = setTimeout(() => {
     process.kill();
+    logCallback({
+      status: 'warning',
+      message: '⏱️ Command timeout (10 minutes)'
+    });
     reject(new Error('Project execution timeout (10 minutes)'));
   }, 600000);
 
@@ -230,28 +235,26 @@ function executeSequentially(commands, projectDir, logCallback, resolve, reject)
     if (code === 0) {
       logCallback({
         status: 'progress',
-        message: `✅ Command completed: ${command}`
+        message: `✅ ${cmd} completed successfully`
       });
       // Continue to next command
-      executeSequentially(commands, projectDir, logCallback, resolve, reject);
-    } else if (code === null) {
-      logCallback({
-        status: 'warning',
-        message: '⚠️ Command terminated'
-      });
-      executeSequentially(commands, projectDir, logCallback, resolve, reject);
+      executeCommandSequence(commands, projectDir, logCallback, resolve, reject);
     } else {
       logCallback({
         status: 'warning',
-        message: `⚠️ Command exited with code ${code} (continuing...)`
+        message: `⚠️ ${cmd} exited with code ${code} (continuing...)`
       });
-      // Continue anyway - might be normal for some build tools
-      executeSequentially(commands, projectDir, logCallback, resolve, reject);
+      // Continue anyway - might be normal
+      executeCommandSequence(commands, projectDir, logCallback, resolve, reject);
     }
   });
 
   process.on('error', (error) => {
     clearTimeout(timeout);
+    logCallback({
+      status: 'error',
+      message: `❌ Failed to start ${cmd}: ${error.message}`
+    });
     reject(error);
   });
 }
