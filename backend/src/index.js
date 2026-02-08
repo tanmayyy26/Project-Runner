@@ -17,6 +17,9 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
+// Disable Docker - run natively on Render
+process.env.DOCKER_ENABLED = 'false';
+
 // Import route handlers and utilities
 const projectRunner = require('./services/projectRunner');
 const errorHandler = require('./middleware/errorHandler');
