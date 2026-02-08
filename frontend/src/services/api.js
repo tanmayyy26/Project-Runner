@@ -4,8 +4,20 @@
  * Handles communication with the backend API
  */
 
-// Use relative paths - works with both local and production servers
-const API_BASE_URL = '';
+// Detect API URL based on environment
+const getAPIBaseUrl = () => {
+  // In production, use same origin (Express serves both frontend and backend)
+  if (window.location.hostname !== 'localhost') {
+    return `${window.location.protocol}//${window.location.host}`;
+  }
+  // In development, backend might be on different port
+  return process.env.REACT_APP_API_URL || 'http://localhost:5000';
+};
+
+const API_BASE_URL = getAPIBaseUrl();
+
+console.log('🔌 API Base URL:', API_BASE_URL);
+
 
 /**
  * Run a GitHub project
@@ -46,9 +58,12 @@ export const runProject = (repositoryUrl, branch = 'main', onMessage) => {
     };
 
     eventSource.onerror = (error) => {
-      console.error('EventSource error:', error);
+      console.error('❌ EventSource connection failed:', error);
+      console.error('Trying to connect to:', `${API_BASE_URL}/run`);
       eventSource.close();
-      reject(new Error('Connection to server failed'));
+      reject(new Error(
+        `Backend connection failed. Is the server running?\nTrying: ${API_BASE_URL}/run`
+      ));
     };
   });
 };
