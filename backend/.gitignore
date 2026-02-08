@@ -1,0 +1,12 @@
+# Backend .gitignore
+node_modules/
+npm-debug.log
+package-lock.json
+.env
+.env.local
+temp-projects/
+logs/
+.DS_Store
+.vscode/
+.idea/
+*.swp
