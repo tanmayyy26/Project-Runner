@@ -3,47 +3,45 @@
 FROM node:18-alpine as frontend-builder
 WORKDIR /app
 COPY frontend/package*.json ./frontend/
-RUN cd frontend && npm install
+RUN cd frontend && npm ci
 COPY frontend/ ./frontend/
 RUN cd frontend && npm run build
 
-# Stage 2: Build backend and final image
+# Stage 2: Build and run backend with nginx
 FROM node:18-alpine
 WORKDIR /app
 
-# Install system dependencies including nginx
-RUN apk add --no-cache git bash nginx curl
+# Install nginx
+RUN apk add --no-cache nginx curl git bash
 
-# Copy backend files and install dependencies
+# Copy backend dependencies
 COPY backend/package*.json ./
-RUN npm install --production
+RUN npm ci --production
 
-# Copy backend source code
+# Copy backend code
 COPY backend/ ./
 
-# Create temp directory for cloned projects
-RUN mkdir -p /app/temp-projects
+# Create temp directory
+RUN mkdir -p /app/temp-projects /var/log/nginx /var/run/nginx
 
-# Copy frontend build from stage 1
-COPY --from=frontend-builder /app/frontend/build /usr/share/nginx/html
-
-# Copy nginx configuration
+# Copy nginx config
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy startup script
-COPY docker/start.sh /app/start.sh
-RUN chmod +x /app/start.sh
+# Copy frontend build to nginx
+RUN mkdir -p /usr/share/nginx/html
+COPY --from=frontend-builder /app/frontend/build/ /usr/share/nginx/html/
 
-# Make sure nginx.conf is correct
-RUN cat /etc/nginx/conf.d/default.conf
+# Verify frontend files exist
+RUN ls -la /usr/share/nginx/html/ && echo "✓ Frontend files copied successfully"
 
 # Expose port
 EXPOSE 10000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Start services
-CMD ["/app/start.sh"]
+# Start both services
+CMD ["sh", "-c", "echo 'Starting nginx and backend...' && nginx -g 'daemon off;' & npm start"]
+
 
