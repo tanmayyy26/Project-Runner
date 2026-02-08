@@ -11,8 +11,8 @@ RUN npm run build
 FROM node:18-alpine
 WORKDIR /app
 
-# Install git and bash for project cloning
-RUN apk add --no-cache git bash
+# Install git, bash, and curl for project cloning and health checks
+RUN apk add --no-cache git bash curl
 
 # Copy backend
 COPY backend/package*.json ./
@@ -26,15 +26,16 @@ COPY --from=frontend-builder /app/frontend/build ./public
 # Create temp directory for cloned projects
 RUN mkdir -p ./temp-projects
 
-# Expose port (Render uses this)
-EXPOSE 10000
+# Expose port (Render will set PORT env var to 10000)
+EXPOSE 5000
 
-# Health check
+# Health check - check the actual port the backend listens on
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
 
 # Start backend (which serves frontend as static files)
 CMD ["npm", "start"]
+
 
 
 
