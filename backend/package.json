@@ -1,7 +1,7 @@
 {
   "name": "github-project-runner-backend",
   "version": "1.0.0",
-  "description": "Backend server for running GitHub projects in Docker containers",
+  "description": "Backend server for running GitHub projects natively",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

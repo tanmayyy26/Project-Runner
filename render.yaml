@@ -7,20 +7,8 @@ services:
     autoDeploy: true
     envVars:
       - key: PORT
-        value: 10000
+        value: 5000
       - key: NODE_ENV
         value: production
       - key: DOCKER_ENABLED
-        value: "true"
-      - key: LOG_LEVEL
-        value: debug
-      - key: CONTAINER_MEMORY_LIMIT
-        value: 512m
-      - key: CONTAINER_CPU_LIMIT
-        value: "1"
-      - key: CONTAINER_TIMEOUT
-        value: "600000"
-      - key: CLONE_TIMEOUT
-        value: "30000"
-      - key: MAX_PROJECT_SIZE
-        value: "1000000000"
+        value: "false"
