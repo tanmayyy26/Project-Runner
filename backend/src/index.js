@@ -151,61 +151,10 @@ app.post('/run', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no'); // Disable buffering
+    res.setHeader('X-Accel-Buffering', 'no');
 
     const executionId = generateExecutionId();
     console.log(`[${executionId}] Starting project execution (POST) for: ${url}`);
-
-    // Send initial message
-    sendSSEMessage(res, {
-      status: 'started',
-      id: executionId,
-      message: 'Initializing project execution...'
-    });
-
-    // Run the project asynchronously
-    projectRunner.runProject(url, branch, (message) => {
-      sendSSEMessage(res, message);
-    }).then(() => {
-      sendSSEMessage(res, {
-        status: 'completed',
-        id: executionId,
-        message: 'Project execution completed'
-      });
-      res.end();
-    }).catch((error) => {
-      console.error(`[${executionId}] Error:`, error);
-      sendSSEMessage(res, {
-        status: 'error',
-        id: executionId,
-        message: error.message,
-        error: true
-      });
-      res.end();
-    });
-  } catch (error) {
-    console.error('Error in /run POST:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-    // Validate input
-    if (!url) {
-      return res.status(400).json({ error: 'GitHub repository URL is required' });
-    }
-
-    if (!isValidGitHubUrl(url)) {
-      return res.status(400).json({ error: 'Invalid GitHub repository URL format' });
-    }
-
-    // Set up Server-Sent Events for streaming logs
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-
-    const executionId = generateExecutionId();
-    console.log(`[${executionId}] Starting project execution for: ${url}`);
 
     // Send initial message
     sendSSEMessage(res, {
@@ -240,10 +189,9 @@ app.post('/run', async (req, res) => {
       console.log(`[${executionId}] Client disconnected`);
       res.end();
     });
-
   } catch (error) {
-    console.error('Error in /run endpoint:', error);
-    res.status(500).json({ error: 'Internal server error', details: error.message });
+    console.error('Error in /run POST:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
