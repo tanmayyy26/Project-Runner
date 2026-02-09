@@ -20,7 +20,7 @@ console.log('🔌 API Base URL:', API_BASE_URL);
 
 
 /**
- * Run a GitHub project
+ * Run a GitHub project with automatic reconnection
  * 
  * @param {string} repositoryUrl - GitHub repository URL
  * @param {string} branch - Branch name (default: main)
@@ -29,42 +29,80 @@ console.log('🔌 API Base URL:', API_BASE_URL);
  */
 export const runProject = (repositoryUrl, branch = 'main', onMessage) => {
   return new Promise((resolve, reject) => {
-    const eventSource = new EventSource(
-      `${API_BASE_URL}/run?url=${encodeURIComponent(repositoryUrl)}&branch=${encodeURIComponent(branch)}`,
-      { withCredentials: false }
-    );
+    let eventSource = null;
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 10;
+    let isCompleted = false;
+    let lastMessageTime = Date.now();
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        onMessage(data);
+    const connect = () => {
+      if (isCompleted) return;
 
-        // Close connection on completion or error
-        if (data.status === 'completed' || data.status === 'error') {
-          eventSource.close();
-          if (data.status === 'error') {
-            reject(new Error(data.message));
-          } else {
-            resolve();
+      eventSource = new EventSource(
+        `${API_BASE_URL}/run?url=${encodeURIComponent(repositoryUrl)}&branch=${encodeURIComponent(branch)}`,
+        { withCredentials: false }
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          lastMessageTime = Date.now();
+          const data = JSON.parse(event.data);
+          onMessage(data);
+
+          // Close connection on completion or error
+          if (data.status === 'completed' || data.status === 'error') {
+            isCompleted = true;
+            eventSource.close();
+            if (data.status === 'error') {
+              reject(new Error(data.message));
+            } else {
+              resolve();
+            }
           }
+        } catch (error) {
+          console.error('Error parsing message:', error);
+          onMessage({
+            status: 'error',
+            message: 'Failed to parse server response'
+          });
         }
-      } catch (error) {
-        console.error('Error parsing message:', error);
-        onMessage({
-          status: 'error',
-          message: 'Failed to parse server response'
-        });
-      }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('❌ EventSource connection failed:', error);
+        eventSource.close();
+
+        if (isCompleted) return;
+
+        // Attempt to reconnect if we haven't exceeded max attempts
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+          
+          onMessage({
+            status: 'warning',
+            message: `⚠️ Connection lost. Reconnecting (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`
+          });
+
+          setTimeout(() => {
+            console.log(`Reconnecting... (attempt ${reconnectAttempts})`);
+            connect();
+          }, delay);
+        } else {
+          reject(new Error(
+            `Backend connection failed after ${maxReconnectAttempts} attempts.\nTrying: ${API_BASE_URL}/run`
+          ));
+        }
+      };
+
+      // Reset reconnect attempts on successful connection
+      eventSource.onopen = () => {
+        console.log('EventSource connection established');
+        reconnectAttempts = 0;
+      };
     };
 
-    eventSource.onerror = (error) => {
-      console.error('❌ EventSource connection failed:', error);
-      console.error('Trying to connect to:', `${API_BASE_URL}/run`);
-      eventSource.close();
-      reject(new Error(
-        `Backend connection failed. Is the server running?\nTrying: ${API_BASE_URL}/run`
-      ));
-    };
+    connect();
   });
 };
 

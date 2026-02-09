@@ -87,14 +87,14 @@ app.get('/run', async (req, res) => {
     const executionId = generateExecutionId();
     console.log(`[${executionId}] Starting project execution (GET) for: ${url}`);
 
-    // Server-level heartbeat to keep connection alive (every 10 seconds)
+    // Server-level heartbeat to keep connection alive (every 5 seconds)
     const heartbeatInterval = setInterval(() => {
       try {
         res.write(': heartbeat\n\n'); // SSE comment-style keepalive
       } catch (error) {
         clearInterval(heartbeatInterval);
       }
-    }, 10000);
+    }, 5000); // 5 seconds
 
     // Cleanup on connection close
     req.on('close', () => {
@@ -184,14 +184,14 @@ app.post('/run', async (req, res) => {
     const executionId = generateExecutionId();
     console.log(`[${executionId}] Starting project execution (POST) for: ${url}`);
 
-    // Server-level heartbeat to keep connection alive (every 10 seconds)
+    // Server-level heartbeat to keep connection alive (every 5 seconds)
     const heartbeatInterval = setInterval(() => {
       try {
         res.write(': heartbeat\n\n'); // SSE comment-style keepalive
       } catch (error) {
         clearInterval(heartbeatInterval);
       }
-    }, 10000);
+    }, 5000); // 5 seconds
 
     // Cleanup on connection close
     req.on('close', () => {
