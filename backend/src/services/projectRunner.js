@@ -225,10 +225,18 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
     childProcess.kill();
     logCallback({
       status: 'warning',
-      message: '⏱️ Command timeout (10 minutes)'
+      message: '⏱️ Command timeout (20 minutes)'
     });
-    reject(new Error('Project execution timeout (10 minutes)'));
-  }, 600000);
+    reject(new Error('Project execution timeout (20 minutes)'));
+  }, 1200000); // 20 minutes for long builds
+
+  // Send keepalive pings every 30 seconds to prevent connection timeout
+  const keepaliveInterval = setInterval(() => {
+    logCallback({
+      status: 'keepalive',
+      message: '⏳ Build in progress...'
+    });
+  }, 30000);
 
   // Handle stdout
   childProcess.stdout.on('data', (data) => {
@@ -259,6 +267,7 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
   // Handle process exit
   childProcess.on('close', (code) => {
     clearTimeout(timeout);
+    clearInterval(keepaliveInterval); // Stop keepalive pings
 
     if (code === 0) {
       logCallback({
@@ -277,8 +286,9 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
     }
   });
 
-  process.on('error', (error) => {
+  childProcess.on('error', (error) => {
     clearTimeout(timeout);
+    clearInterval(keepaliveInterval); // Stop keepalive pings
     logCallback({
       status: 'error',
       message: `❌ Failed to start ${cmd}: ${error.message}`
