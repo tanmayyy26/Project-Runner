@@ -166,6 +166,31 @@ See `render.yaml` for full configuration.
 - **Streaming Logs** - Real-time output without buffering
 - **Auto Cleanup** - Prevents disk space issues
 
+## Known Limitations
+
+### Connection Timeouts on Free Hosting
+
+**Issue:** Render.com's free tier has hard HTTP connection limits (~2-3 minutes) that cannot be bypassed.
+
+**Impact:**
+- Very large projects (Next.js 16, large React apps) with 15-30 min build times will timeout
+- Connection drops trigger reconnections, but each reconnection starts a NEW execution
+- This creates infinite loops for projects that never complete within the timeout
+
+**Recommended Projects for Demo:**
+- ✅ Simple Express/Node.js apps (< 2 min)
+- ✅ Small React apps (< 5 min build)
+- ✅ Python Flask/FastAPI apps
+- ✅ Basic Java Spring Boot apps
+- ❌ Large Next.js 16 apps (20-30 min builds)
+- ❌ Complex enterprise applications
+
+**Solution for Production:**
+- Upgrade to Render paid tier (no connection limits)
+- Use dedicated servers (AWS EC2, DigitalOcean)
+- Implement job queue system (Redis + workers)
+- Use polling instead of SSE for long operations
+
 ## Troubleshooting
 
 **Port Already in Use:**

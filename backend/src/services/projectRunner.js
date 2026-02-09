@@ -134,12 +134,16 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
         
         // For Next.js projects: just build, don't start (would run indefinitely)
         if (isNextJs) {
+          logCallback({
+            status: 'warning',
+            message: '⚠️ Next.js detected: Large projects may timeout on free hosting. Builds can take 15-30 minutes.'
+          });
           if (packageJson.scripts && packageJson.scripts.build) {
             commands.push({ type: 'npm', args: ['run', 'build'] });
           }
           logCallback({
             status: 'progress',
-            message: '✅ Next.js project detected - skipping server start (would run indefinitely)'
+            message: '✅ Skipping server start (would run indefinitely)'
           });
         } 
         // For other frameworks that need building
