@@ -132,12 +132,20 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
           ((packageJson.dependencies && packageJson.dependencies.next) ||
            (packageJson.devDependencies && packageJson.devDependencies.next));
         
-        // For Next.js and other frameworks that need building
-        if (isNextJs || (packageJson && packageJson.scripts && packageJson.scripts.build)) {
-          // Build first
-          if (packageJson.scripts.build) {
+        // For Next.js projects: just build, don't start (would run indefinitely)
+        if (isNextJs) {
+          if (packageJson.scripts && packageJson.scripts.build) {
             commands.push({ type: 'npm', args: ['run', 'build'] });
           }
+          logCallback({
+            status: 'progress',
+            message: '✅ Next.js project detected - skipping server start (would run indefinitely)'
+          });
+        } 
+        // For other frameworks that need building
+        else if (packageJson && packageJson.scripts && packageJson.scripts.build) {
+          // Build first
+          commands.push({ type: 'npm', args: ['run', 'build'] });
           // Then start if available
           if (packageJson.scripts.start) {
             commands.push({ type: 'npm', args: ['start'] });
@@ -225,10 +233,10 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
     childProcess.kill();
     logCallback({
       status: 'warning',
-      message: '⏱️ Command timeout (20 minutes)'
+      message: '⏱️ Command timeout (30 minutes)'
     });
-    reject(new Error('Project execution timeout (20 minutes)'));
-  }, 1200000); // 20 minutes for long builds
+    reject(new Error('Project execution timeout (30 minutes)'));
+  }, 1800000); // 30 minutes for very large builds
 
   // Send keepalive pings every 15 seconds to prevent connection timeout
   const keepaliveInterval = setInterval(() => {
