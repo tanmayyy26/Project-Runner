@@ -127,11 +127,24 @@ async function runProjectNatively(projectDir, projectType, logCallback) {
         // Always install first
         commands.push({ type: 'npm', args: ['install'] });
         
-        // Then check what to run
-        if (packageJson && packageJson.scripts && packageJson.scripts.start) {
+        // Check if it's a Next.js project
+        const isNextJs = packageJson && 
+          ((packageJson.dependencies && packageJson.dependencies.next) ||
+           (packageJson.devDependencies && packageJson.devDependencies.next));
+        
+        // For Next.js and other frameworks that need building
+        if (isNextJs || (packageJson && packageJson.scripts && packageJson.scripts.build)) {
+          // Build first
+          if (packageJson.scripts.build) {
+            commands.push({ type: 'npm', args: ['run', 'build'] });
+          }
+          // Then start if available
+          if (packageJson.scripts.start) {
+            commands.push({ type: 'npm', args: ['start'] });
+          }
+        } else if (packageJson && packageJson.scripts && packageJson.scripts.start) {
+          // For non-build projects, just start
           commands.push({ type: 'npm', args: ['start'] });
-        } else if (packageJson && packageJson.scripts && packageJson.scripts.build) {
-          commands.push({ type: 'npm', args: ['run', 'build'] });
         } else {
           logCallback({
             status: 'warning',
