@@ -73,6 +73,10 @@ app.get('/run', async (req, res) => {
       return res.status(400).json({ error: 'Invalid GitHub repository URL format' });
     }
 
+    // Disable request timeout for long-running builds
+    req.setTimeout(0); // No timeout
+    res.setTimeout(0); // No timeout
+
     // Set up Server-Sent Events for streaming logs
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -82,6 +86,21 @@ app.get('/run', async (req, res) => {
 
     const executionId = generateExecutionId();
     console.log(`[${executionId}] Starting project execution (GET) for: ${url}`);
+
+    // Server-level heartbeat to keep connection alive (every 10 seconds)
+    const heartbeatInterval = setInterval(() => {
+      try {
+        res.write(': heartbeat\n\n'); // SSE comment-style keepalive
+      } catch (error) {
+        clearInterval(heartbeatInterval);
+      }
+    }, 10000);
+
+    // Cleanup on connection close
+    req.on('close', () => {
+      console.log(`[${executionId}] Client disconnected`);
+      clearInterval(heartbeatInterval);
+    });
 
     // Send initial message
     sendSSEMessage(res, {
@@ -94,6 +113,7 @@ app.get('/run', async (req, res) => {
     projectRunner.runProject(url, branch, (message) => {
       sendSSEMessage(res, message);
     }).then(() => {
+      clearInterval(heartbeatInterval);
       sendSSEMessage(res, {
         status: 'completed',
         id: executionId,
@@ -101,6 +121,7 @@ app.get('/run', async (req, res) => {
       });
       res.end();
     }).catch((error) => {
+      clearInterval(heartbeatInterval);
       console.error(`[${executionId}] Error:`, error);
       sendSSEMessage(res, {
         status: 'error',
@@ -149,6 +170,10 @@ app.post('/run', async (req, res) => {
       return res.status(400).json({ error: 'Invalid GitHub repository URL format' });
     }
 
+    // Disable request timeout for long-running builds
+    req.setTimeout(0); // No timeout
+    res.setTimeout(0); // No timeout
+
     // Set up Server-Sent Events for streaming logs
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -158,6 +183,21 @@ app.post('/run', async (req, res) => {
 
     const executionId = generateExecutionId();
     console.log(`[${executionId}] Starting project execution (POST) for: ${url}`);
+
+    // Server-level heartbeat to keep connection alive (every 10 seconds)
+    const heartbeatInterval = setInterval(() => {
+      try {
+        res.write(': heartbeat\n\n'); // SSE comment-style keepalive
+      } catch (error) {
+        clearInterval(heartbeatInterval);
+      }
+    }, 10000);
+
+    // Cleanup on connection close
+    req.on('close', () => {
+      console.log(`[${executionId}] Client disconnected`);
+      clearInterval(heartbeatInterval);
+    });
 
     // Send initial message
     sendSSEMessage(res, {
@@ -170,6 +210,7 @@ app.post('/run', async (req, res) => {
     projectRunner.runProject(url, branch, (message) => {
       sendSSEMessage(res, message);
     }).then(() => {
+      clearInterval(heartbeatInterval);
       sendSSEMessage(res, {
         status: 'completed',
         id: executionId,
@@ -177,6 +218,7 @@ app.post('/run', async (req, res) => {
       });
       res.end();
     }).catch((error) => {
+      clearInterval(heartbeatInterval);
       console.error(`[${executionId}] Error:`, error);
       sendSSEMessage(res, {
         status: 'error',

@@ -230,13 +230,13 @@ function executeCommandSequence(commands, projectDir, logCallback, resolve, reje
     reject(new Error('Project execution timeout (20 minutes)'));
   }, 1200000); // 20 minutes for long builds
 
-  // Send keepalive pings every 30 seconds to prevent connection timeout
+  // Send keepalive pings every 15 seconds to prevent connection timeout
   const keepaliveInterval = setInterval(() => {
     logCallback({
       status: 'keepalive',
       message: '⏳ Build in progress...'
     });
-  }, 30000);
+  }, 15000); // 15 seconds
 
   // Handle stdout
   childProcess.stdout.on('data', (data) => {
